@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nowcoder.community.dao.DiscussPostMapper">
+    <sql id="selectFields">
+        id,user_id,title,content,type,status,create_time,comment_count,score
+    </sql>
+
+    <!--返回的是一个List，里面装的是DiscussPost实体类-->
+    <!--拉黑的帖子不能展示，也就是status=2的帖子-->
+    <!--test对应的是DiscussPostMapper方法的参数，要一致-->
+    <!--order by : 倒序排序，置顶的帖子排在前面。类型一样的情况下按照时间倒序排序-->
+    <!--分页：limit #{offset},#{limit}-->
+    <select id="selectDiscussPosts" resultType="DiscussPost">
+        select
+        <include refid="selectFields"></include>
+        from discuss_post
+        where status!=2
+        <if test="userId!=0">
+            and user_id=#{userId}
+        </if>
+        order by type desc ,create_time desc
+        limit #{offset},#{limit}
+    </select>
+
+    <!--resultType是int的基本数据类型，不声明也是可以自动识别的-->
+    <!--count(id) : 统计结果中id的数量有多少-->
+    <select id="selectDiscussPostRows" resultType="int">
+        select count(id)
+        from discuss_post
+        where status!=2
+        <if test="userId!=0">
+            and user_id=#{userId}
+        </if>
+    </select>
+
+</mapper>
