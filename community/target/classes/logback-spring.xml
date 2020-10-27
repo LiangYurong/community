@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <!--contextName里面写项目名称-->
-    <!--第一个property，value写的是日志存放的文件路径-->
-    <!--第一个property，value写的是日志存放的文件路径-->
+    <!--第1个property，value写的是日志存放的文件路径-->
+    <!--第2个property，value写的是针对community项目再追加的一个路径。因为服务器上可能会部署不同的项目。-->
     <contextName>community</contextName>
     <property name="LOG_PATH" value="C:/Users/Administrator/Desktop/nowcoderCommunity/log"/>
     <property name="APPDIR" value="community"/>
