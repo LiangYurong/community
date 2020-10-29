@@ -2,15 +2,17 @@ package com.nowcoder.community.entity;
 
 /**
  * 封装分页的相关信息.
- * <p>
+ *
  * 页码是从第一页开始显示的。
+ *
+ * 当前页，左右可以再展示两页。如果左右两页符合规则的话。
  */
 public class Page {
 
     //当前页码
     private int current = 1;
 
-    //显示的页码上限。(一页显示limit条数据)
+    //一页显示limit条数据
     private int limit = 5;
 
     //总的行数,也就是帖子有多少条（总数据/limit）。50条数据，每一页显示10条数据，那么总页数就是5

@@ -1,3 +1,6 @@
+//生成验证码的路径的一个主路径
+var CONTEXT_PATH="/community";
+
 window.alert = function(message) {
 	if(!$(".alert-box").length) {
 		$("body").append(
