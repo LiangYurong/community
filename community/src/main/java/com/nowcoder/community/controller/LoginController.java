@@ -4,15 +4,19 @@ import com.google.code.kaptcha.Producer;
 import com.nowcoder.community.entity.User;
 import com.nowcoder.community.service.UserService;
 import com.nowcoder.community.util.CommunityConstant;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import javax.imageio.ImageIO;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.awt.image.BufferedImage;
@@ -20,6 +24,14 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map;
 
+/**
+ *
+ * 登录/验证/注册
+ *
+ * session是什么时候创建的？当浏览器A向服务器发送会话请求，并且访问服务器端某个能和浏览器开启会话的servlet程序时，
+ *      服务器为这次会话创建一个HttpSession对象，并会这次会话分配一个唯一标识号id。
+ *      并且这个HttpSession对象和这个id唯一对应。 
+ */
 @Controller
 public class LoginController implements CommunityConstant {
 
@@ -31,6 +43,9 @@ public class LoginController implements CommunityConstant {
     @Autowired
     private Producer kaptchaProducer;
 
+    @Value("${server.servlet.context-path}")
+    private String contextPath;
+
 
     /**
      * 跳转到登录页面
@@ -40,6 +55,56 @@ public class LoginController implements CommunityConstant {
     public String getLoginPage(){
         return "site/login";
     }
+
+    /**
+     * 接收前端form表单传递过来的username,password,code，判断是否能够登录。
+     * @param username 用户名
+     * @param password 密码
+     * @param code 验证码
+     * @param rememberme 是否选择记住
+     * @param model model可以向前端返回数据
+     * @param session 需要获取到验证码
+     * @param response 需要建立一个cookie，服务端在cookie放ticket在里面，然后传回给客户端
+     * @return
+     */
+    @PostMapping("/login")
+    public String login(String username,String password,String code,boolean rememberme,
+                        Model model,HttpSession session,HttpServletResponse response){
+        String kaptcha =(String) session.getAttribute("kaptcha");
+        //检查验证码
+        if(!kaptcha.equalsIgnoreCase(code)|| StringUtils.isBlank(kaptcha)||StringUtils.isBlank(code)){
+            model.addAttribute("codeMsg","验证码错误");
+            return "site/login";
+        }
+        //检查账号密码
+        int expiredSeconds= rememberme ? CommunityConstant.REMEMBER_EXPIRED_SECONDS : CommunityConstant.DEFAULT_EXPIRED_SECONDS;
+        Map<String, Object> map = userService.login(username, password, expiredSeconds);
+        if(map.containsKey("ticket")){
+            //如果map含有ticket，说明登录成功。此时还需要将ticket包在cookie里面发送给客户端。该cookie的访问路经应该是整个项目都可访问。
+            Cookie cookie=new Cookie("ticket",map.get("ticket").toString());
+            cookie.setPath(contextPath);
+            cookie.setMaxAge(expiredSeconds);
+            response.addCookie(cookie);
+            return "redirect:/index";
+        }else {
+            model.addAttribute("usernameMsg",map.get("usernameMsg"));
+            model.addAttribute("passwordMsg",map.get("passwordMsg"));
+            return "site/login";
+        }
+    }
+
+    /**
+     * 退出登录。需要获取到cookie里面的ticket，进而修改登录的状态status=1（登录失效状态）.
+     *
+     * 重定向默认是get请求。
+     * @return
+     */
+    @GetMapping("/logout")
+    public String logout(@CookieValue("ticket") String ticket){
+        userService.logout(ticket);
+        return "redirect:/login";
+    }
+
 
     /**
      * 跳转到注册页面
@@ -103,9 +168,9 @@ public class LoginController implements CommunityConstant {
 
 
     /**
-     * 获取生成验证码图片的路径
+     * 获取生成验证码图片的路径。主要是login.html的刷新验证码按钮，在前端点击刷新就会调用这个方法。
      *
-     * 生成验证码之后，服务端需要将这个验证码记住。因为验证码是敏感数据，所以不能存于浏览器的cookie，而是将其存储在服务端的session。
+     * 生成验证码之后，服务端需要将这个验证码记住。因为验证码是敏感数据，所以不能存于浏览器的cookie，而是将其存储在服务端的session。这个验证码用于登录时候。
      * @param response
      */
     @GetMapping("/kaptcha")
@@ -115,7 +180,7 @@ public class LoginController implements CommunityConstant {
         //生成字符串对应的图片
         BufferedImage image = kaptchaProducer.createImage(text);
         //将验证码存入session
-        session.setAttribute("text",text);
+        session.setAttribute("kaptcha",text);
         //将图片输出给浏览器
         response.setContentType("/image/png");
         try {
